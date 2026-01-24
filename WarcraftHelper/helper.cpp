@@ -20,6 +20,7 @@
 #include <atlstr.h>
 
 #pragma comment(lib, "Version.lib")
+#pragma comment(lib, "opengl32.lib")
 #pragma warning(disable:4996) 
 
 Helper::Helper() {
