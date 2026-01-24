@@ -36,12 +36,16 @@ void FpsLimiter::Start() {
 
 	switch (GetGameInstance()->GetGameVersion()) {
 	case Version::v127a:
-        gxDrawAddr = gameAddr + 0xED080;
         gxTypeAddr = gameAddr + 0xB665C8;
+        gxType = *(GxType *)gxTypeAddr;
+
+        gxDrawAddr = gxType == GxType_Direct3D ? gameAddr + 0xED080 : gameAddr + 0xF0CC0;
 		break;
 	case Version::v127b:
-        gxDrawAddr = gameAddr + 0x140950;
         gxTypeAddr = gameAddr + 0xCE3D50;
+        gxType = *(GxType *)gxTypeAddr;
+
+        gxDrawAddr = gxType == GxType_Direct3D ? gameAddr + 0x140950 : gameAddr + 0x144580;
 		break;
 	default:
 		return;
@@ -51,9 +55,7 @@ void FpsLimiter::Start() {
         return;
     }
 
-    gxType = *(GxType *)gxTypeAddr;
-
-    if (gxType != GxType_Direct3D) {
+    if (gxType != GxType_Direct3D && gxType != GxType_OpenGL) {
         return;
     }
 

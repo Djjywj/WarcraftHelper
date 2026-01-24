@@ -48,6 +48,7 @@
 
 ```shell
 cmake . -A win32 -B build
+cmake --build build --config MinSizeRel
 ```
 
 ​	生成好的项目文件在build目录下。
