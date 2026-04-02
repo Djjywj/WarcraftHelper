@@ -15,7 +15,7 @@ void ReplayView::Start()
         break;
     case Version::v124e:
         replayMaxSpeedAddr01 += 0x2F7BC9;
-        replayMaxSpeedAddr02 += 0x53F2E9;
+        replayMaxSpeedAddr02 += 0x53F2E8;
         replayMaxSpeedAddr03 += 0x53F2EC;
         break;
     case Version::v126a:
