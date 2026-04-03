@@ -88,4 +88,5 @@ void ShowHPBar::Start() {
 void ShowHPBar::Stop() {
 	Game::DetachHook((void*)orgSetGameStatus, SetGameStatus);
 	TerminateThread(this->thread, 0);
+	CloseHandle(this->thread);
 }
