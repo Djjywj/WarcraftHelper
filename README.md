@@ -153,7 +153,7 @@ VS 多配置生成器会多一层配置名文件夹）。
 在新时代 Windows 上的大量兼容性问题（解锁地图大小、宽屏、解锁 FPS、自动录像等），
 没有它这个光标锁定补丁也没有立足之地。本补丁只是站在这个项目基础上的一个小扩展。
 
-也感谢上游 `readme.md` 里提到的参考项目：
+也感谢上游 README 里提到的参考项目：
 
 - [YDWE](https://github.com/actboy168/YDWE)
 - [RenderEdge](https://github.com/ENAleksey/RenderEdge_Widescreen)
@@ -194,3 +194,76 @@ VS 多配置生成器会多一层配置名文件夹）。
 ## 九、反馈
 
 有问题在 <https://github.com/Djjywj/WarcraftHelper/issues> 提。
+
+---
+
+附：原作者 README 原文（LoveBeforT/WarcraftHelper）
+
+> 下面这一段是上游 `readme.md` 的原文，原样保留，方便对照原始功能说明。
+> 本项目把原上游文件合并进了本文件（原 `readme.md` 已删除），原因是 Windows
+> 不区分文件名大小写，`README.md` 和 `readme.md` 同时存在会导致克隆冲突。
+
+---
+
+**其他推荐的项目**：
+
+​	[重制版转经典版国服语音](https://github.com/LoveBeforT/war3-chinese-voice)
+
+​	[重制版转经典版开场动画](https://github.com/LoveBeforT/war3-reforged-movie)
+
+#### 介绍
+
+魔兽辅助插件，解除地图大小限制，宽屏支持，解锁FPS，自动保存录像，自动显示fps，最大刷新率修复，目录中文名修复(同时也修复了中文名字地图的显示BUG)，自动显血，另外也修复了使用U9魔兽助手时点击地图崩溃问题。
+
+![image-20220910193304584](./.image/pathfix.png)
+
+支持版本：1.20e、1.24e、1.26a、1.27a和1.27b
+
+| 特性             | 1.20e | 1.24e | 1.26a | 1.27a-1.27b |
+| ---------------- | ----- | ----- | ----- | ----- |
+| 解锁地图大小限制 | √     | √     | √     | √     |
+| 宽屏             | √     | √     | √     | √     |
+| 解锁fps          | √     | √     | √     | √     |
+| 自动保存录像     | √     | √     | √     | √     |
+| 自动显示fps      | ×     | √     | √     | √     |
+| 最大刷新率修复   | √     | √     | √     | √     |
+| 地图目录中文名修复   | √     | √     | √     | √     |
+| 自动显血 | √ | 游戏自带 | 游戏自带 | 游戏自带 |
+| 字体重叠修复 | √ | √ | √ | √ |
+| U9魔兽助手崩溃修复 | × | × | √ | × |
+| FPS限制 | × | × | × | √ |
+
+使用方法：把zip压缩包解压后直接放到魔兽目录下，第一次运行使用窗口化模式启动魔兽争霸3，以便插件覆盖注册表中魔兽fps最大值数据。强烈建议使用窗口化模式游玩魔兽。
+
+- 如果你的显示器大于1080p，产生了字体重叠问题，游戏内使用F7键可以刷新窗口，需要窗口化模式。
+
+- 1.20e和1.24e魔兽建议打上d3d8to9补丁，因为新版windows和旧版本魔兽兼容性不好，dx9可以减少卡顿感。
+
+- 录像会自动保存在魔兽replay目录的WHReplay子目录下。
+
+- 所有功能可通过编辑WarcraftHelper.ini配置开关
+
+
+
+#### 生成
+
+​	安装cmake，vs2022。
+
+​	执行以下命令生成项目文件：
+
+```shell
+cmake . -A win32 -B build
+cmake --build build --config MinSizeRel
+```
+
+​	生成好的项目文件在build目录下。
+
+​	编译好的文件在build/output目录下。
+
+
+
+#### 参考项目
+
+[YDWE](https://github.com/actboy168/YDWE)
+
+[RenderEdge](https://github.com/ENAleksey/RenderEdge_Widescreen)
