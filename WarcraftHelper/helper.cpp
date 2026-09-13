@@ -17,6 +17,7 @@
 #include "plugin/replayview.hpp"
 #include "plugin/fpslimiter.hpp"
 #include "plugin/cursorlock.hpp"
+#include "plugin/autowindowrefresh.hpp"
 
 #include <atlstr.h>
 
@@ -38,6 +39,7 @@ Helper::Helper() {
 	m_plugins.push_back(reinterpret_cast<IPlugin*>(new ReplayView()));
 	m_plugins.push_back(reinterpret_cast<IPlugin*>(new FpsLimiter()));
 	m_plugins.push_back(reinterpret_cast<IPlugin*>(new CursorLock()));
+	m_plugins.push_back(reinterpret_cast<IPlugin*>(new AutoWindowRefresh()));
 }
 
 Helper::~Helper() {}

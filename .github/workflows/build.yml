@@ -1,0 +1,50 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  behaviour-tests:
+    name: behaviour tests (stub harness)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run autowindowrefresh tests
+        run: bash tests/run.sh
+
+  windows:
+    name: windows build (MSVC win32)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+
+      - name: Configure
+        run: cmake . -A win32 -B build
+
+      - name: Build
+        run: cmake --build build --config MinSizeRel
+
+      - name: Collect the four files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ready | Out-Null
+          foreach ($name in 'WarcraftHelper.dll','WarcraftHelperLoader.mix','d3d9.dll') {
+            $hit = Get-ChildItem -Path build -Recurse -Filter $name | Select-Object -First 1
+            if (-not $hit) { throw "$name was not produced by the build" }
+            Copy-Item $hit.FullName -Destination ready
+          }
+          Copy-Item WarcraftHelper.ini -Destination ready
+          Get-ChildItem ready | Select-Object -ExpandProperty Name
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: WarcraftHelper-win32
+          path: ready/
+          if-no-files-found: error

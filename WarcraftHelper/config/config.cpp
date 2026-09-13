@@ -19,6 +19,7 @@ Config::Config() {
     m_fullScreen = ini.GetBoolValue("Options", "AutoFullScreen", false);
     m_fpsLimit = ini.GetBoolValue("Options", "FpsLimit", false);
     m_cursorLock = ini.GetBoolValue("Options", "CursorLock", false);
+    m_autoRefreshInterval = (int)ini.GetLongValue("Options", "AutoRefreshInterval", 15);
     m_targetFps = ini.GetDoubleValue("Options", "TargetFps", 60.0);
 }
 

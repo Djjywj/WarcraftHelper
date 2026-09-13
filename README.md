@@ -1,7 +1,11 @@
-# 魔兽争霸3 光标锁定补丁（WarcraftHelper 增强）
+# 魔兽争霸3 增强补丁（WarcraftHelper 增强）
 
-给 [LoveBeforT/WarcraftHelper](https://github.com/LoveBeforT/WarcraftHelper) 加的一个小功能：
-**把鼠标限制在游戏窗口内**。窗口化 / 窗口全屏下鼠标不会再跑到另一个屏幕上去。
+给 [LoveBeforT/WarcraftHelper](https://github.com/LoveBeforT/WarcraftHelper) 加的两个小功能：
+
+1. **光标锁定**：把鼠标限制在游戏窗口内。窗口化 / 窗口全屏下鼠标不会再跑到另一个屏幕上去。
+2. **自动刷新窗口**：每隔 15 秒把游戏窗口宽度抖动 1 像素再复原，清掉高分辨率下的文字重影 / 叠字。
+
+两个功能已经编进 `WarcraftHelper.dll`，**装好开游戏就自动生效，不需要额外运行任何程序**。
 
 ---
 
@@ -16,6 +20,10 @@
 独占全屏模式本来就会把鼠标锁住，所以这个问题只在窗口化 / 窗口全屏时出现。
 这个补丁就是补上这一段。
 
+另外，显示器高于 1080p 时，窗口化模式下游戏画面偶尔会出现**文字重影 / 叠字**。
+上游 WarcraftHelper 本来就有 F7 手动刷新窗口来解决，但每重叠一次就要按一次 F7，很烦。
+补丁加了自动版：每 15 秒自己抖一下窗口，F7 手动刷新依然保留。
+
 ## 二、功能说明
 
 | 项目 | 说明 |
@@ -23,6 +31,8 @@
 | 锁定范围 | 游戏客户区（不含标题栏和边框） |
 | 生效模式 | 窗口化、窗口全屏（独占全屏无需锁定） |
 | 自动解锁 | 切到别的程序、游戏弹出对话框、最小化时自动解除，不会把你困在后台窗口里 |
+| 自动刷新 | 每 15 秒抖动窗口 1 像素再复原，间隔可配置，设为 0 关闭 |
+| 手动刷新 | 游戏中按 F7 立刻刷新一次，和自动刷新互不影响 |
 | 开关 | 改 `WarcraftHelper.ini` 即可，游戏运行中也能随时开关 |
 | 兼容性 | 不影响原插件的任何其他功能 |
 
@@ -35,12 +45,30 @@
 # 仅窗口化/窗口全屏需要此项; 独占全屏时游戏本来就会锁住鼠标
 # 切到其他程序, 或游戏弹出对话框时, 会自动解锁
 CursorLock = true
+
+# 每隔多少秒把游戏窗口宽度抖动 1 像素再复原, 用来刷新画面
+# 窗口化时偶尔会出现文字重影/叠字, 抖一下窗口即可清掉
+# 15 = 每 15 秒自动刷一次; 设为 0 = 关闭此功能
+# 另外游戏中按 F7 可以随时手动立刻刷一次(与这个自动刷新互相独立)
+AutoRefreshInterval = 15
 ```
 
-- `CursorLock = true`：开启（默认）
-- `CursorLock = false`：关闭
+- `CursorLock = true`：开启光标锁定（默认）
+- `CursorLock = false`：关闭光标锁定
+- `AutoRefreshInterval = 15`：每 15 秒自动刷新一次窗口（默认）
+- `AutoRefreshInterval = 0`：关闭自动刷新，只保留 F7 手动刷新
+- 填其他数字：按对应秒数刷新
 
-### 安全设计（为什么不会把鼠标锁死）
+### 自动刷新的安全设计（为什么不会闪屏、不会把窗口弄坏）
+
+1. 只把窗口**变宽 1 像素再复原**，位置不动、高度不动，肉眼看不出窗口在动。
+2. 两次移动都用 `MoveWindow(..., FALSE)`，不让系统先擦白再重画，避免整屏闪一下。
+3. 还原之后会**回头读一次窗口真实尺寸**，确认已经变回去；没变回去就重试。
+   这样不会出现「刷着刷着窗口越来越宽」的情况。
+4. 这些情况下不刷新：窗口不是前台窗口、被最小化、不可见、鼠标左键正被按住（防止打断拖拽）。
+5. 刷新用的是后台线程，基于时间间隔判断，不会因为游戏卡顿而一次性补刷很多次。
+
+### 光标锁定的安全设计（为什么不会把鼠标锁死）
 
 补丁只在**同时满足**这些条件时才锁定：
 
@@ -66,7 +94,9 @@ CursorLock = true
 
 2. 提示覆盖时选「替换」。
 3. 启动游戏。用**窗口化**或**窗口全屏**模式进游戏。
-4. 鼠标就锁在窗口里了。想关掉就把 ini 里的 `CursorLock` 改成 `false`。
+4. 鼠标就锁在窗口里了；文字叠字也不用管了，游戏自己每 15 秒刷一次。
+5. 想关掉：把 ini 里的 `CursorLock` 改成 `false` 关光标锁定；
+   把 `AutoRefreshInterval` 改成 `0` 关自动刷新。
 
 > 注意：`WarcraftHelper.ini` 会覆盖你原来的设置。如果你之前改过其他选项，
 > 先备份旧文件，装完再把自己的设置填回去。
@@ -96,22 +126,49 @@ VS 多配置生成器会多一层配置名文件夹）。
 
 > `build` 目录里的 `.exp` `.lib` `.pdb` 是编译中间产物，不用管，只需要上面那 4 个文件。
 
+### 方式 C：云端自动编译（不想装 Visual Studio 就用这个）
+
+推送代码后，GitHub 会在一台 Windows 机器上自动编译（见
+`.github/workflows/build.yml`）：
+
+1. 打开仓库页面，点上方 **Actions**；
+2. 点最新一次 **windows build** 运行记录；
+3. 页面最下方 **Artifacts** 里下载 `WarcraftHelper-win32`；
+4. 解压得到那 4 个文件，复制到魔兽目录。
+
+### 自己验证自动刷新逻辑（可选，不用玩游戏）
+
+自动刷新的行为有一套离线测试，不需要魔兽、不需要 Windows：
+
+```shell
+bash tests/run.sh
+```
+
+它会用假的 Win32 窗口模拟游戏窗口，检查：间隔没到不乱动、到点抖动正好 1 像素、
+抖完一定还原回原尺寸、还原失败会重试、切到别的程序/最小化/按住左键时不刷新。
+最后打印 `ALL TESTS PASSED` 就是全过。CI 每次推送也会跑这一套。
+
 ---
 
 ## 四、相比上游改了什么
 
-改动很小，就是新增一个插件 + 注册进配置系统：
+改动很小，就是新增两个插件 + 注册进配置系统：
 
 | 文件 | 改动 |
 | --- | --- |
-| `WarcraftHelper/plugin/cursorlock.cpp` | **新增**，光标锁定实现 |
-| `WarcraftHelper/plugin/cursorlock.hpp` | **新增**，插件声明 |
+| `WarcraftHelper/plugin/cursorlock.cpp` / `.hpp` | **新增**，光标锁定实现 |
+| `WarcraftHelper/plugin/autowindowrefresh.cpp` / `.hpp` | **新增**，自动刷新窗口实现 |
 | `CMakeLists.txt` | 加 `add_compile_options(/utf-8)`（见下方说明） |
-| `WarcraftHelper/config/config.cpp` | 注册 `CursorLock` 配置项 |
-| `WarcraftHelper/config/config.hpp` | 加 `m_cursorLock` 成员 |
-| `WarcraftHelper/helper.cpp` | 启动时挂上 CursorLock 插件 |
-| `WarcraftHelper.ini` | 加 `CursorLock = true` |
+| `WarcraftHelper/config/config.cpp` | 注册 `CursorLock` / `AutoRefreshInterval` 配置项 |
+| `WarcraftHelper/config/config.hpp` | 加 `m_cursorLock` / `m_autoRefreshInterval` 成员 |
+| `WarcraftHelper/helper.cpp` | 启动时挂上 CursorLock 和 AutoWindowRefresh 插件 |
+| `WarcraftHelper.ini` | 加 `CursorLock = true`、`AutoRefreshInterval = 15` |
 | `WarcraftHelper/plugin/unlockfps.cpp` | 补上 UTF-8 BOM |
+| `tests/` | **新增**，自动刷新的离线行为测试（发行版不含，不影响游戏） |
+| `.github/workflows/build.yml` | **新增**，云端自动编译出成品 |
+
+上游原有的 **F7 手动刷新窗口**（`windowfixer.cpp`）完全保留，一行没动。
+自动刷新和它是两个独立插件，互不干扰。
 
 ### 关于 `/utf-8` 和 BOM
 
@@ -133,7 +190,10 @@ VS 多配置生成器会多一层配置名文件夹）。
 ### 2026-09（本补丁）
 
 - **新增** 光标锁定功能（`CursorLock`），窗口化 / 窗口全屏下鼠标不再跑出游戏窗口
-- **新增** 开源前的配置开关 `CursorLock`（默认开启）
+- **新增** 自动刷新窗口功能（`AutoRefreshInterval`，默认 15 秒），自动清掉高分辨率下的文字重影 / 叠字
+- **保留** 上游的 F7 手动刷新窗口，和自动刷新互不影响
+- **新增** 自动刷新的离线行为测试 `tests/`，覆盖触发时机、原尺寸还原、前台/最小化判定等
+- **新增** 云端自动编译（GitHub Actions），不用本地装 Visual Studio 也能出成品
 - **修复** 中文 Windows 下 `unlockfps.cpp` 因缺少 BOM 导致的编译错误
 - **新增** 一键编译脚本 `build.bat`，自动收集编译产物到 `ready` 文件夹
 - **新增** 中文说明文档（本文件）

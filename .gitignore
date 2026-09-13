@@ -263,3 +263,7 @@ __pycache__/
 build
 .vscode
 ready/
+
+# offline behaviour test binary
+tests/harness
+tests/harness.exe

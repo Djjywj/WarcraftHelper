@@ -15,6 +15,7 @@ public:
     bool m_autoRep = false;
     bool m_fpsLimit = false;
     bool m_cursorLock = false;
+    int m_autoRefreshInterval = 15;
     double m_targetFps = 0.0f;
 };
 
