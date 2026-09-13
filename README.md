@@ -1,0 +1,177 @@
+# 魔兽争霸3 光标锁定补丁（WarcraftHelper 增强）
+
+给 [LoveBeforT/WarcraftHelper](https://github.com/LoveBeforT/WarcraftHelper) 加的一个小功能：
+**把鼠标限制在游戏窗口内**。窗口化 / 窗口全屏下鼠标不会再跑到另一个屏幕上去。
+
+---
+
+## 一、这个补丁解决什么问题
+
+魔兽争霸3 在窗口化（或窗口全屏）模式下，鼠标可以自由滑出窗口。
+双屏、三屏玩家经常碰到：
+
+- 打团、切屏时鼠标不小心滑到副屏，游戏里英雄就失去控制了；
+- 点屏幕边缘想切视角，结果点到了桌面或另一个程序。
+
+独占全屏模式本来就会把鼠标锁住，所以这个问题只在窗口化 / 窗口全屏时出现。
+这个补丁就是补上这一段。
+
+## 二、功能说明
+
+| 项目 | 说明 |
+| --- | --- |
+| 锁定范围 | 游戏客户区（不含标题栏和边框） |
+| 生效模式 | 窗口化、窗口全屏（独占全屏无需锁定） |
+| 自动解锁 | 切到别的程序、游戏弹出对话框、最小化时自动解除，不会把你困在后台窗口里 |
+| 开关 | 改 `WarcraftHelper.ini` 即可，游戏运行中也能随时开关 |
+| 兼容性 | 不影响原插件的任何其他功能 |
+
+### 配置项
+
+打开游戏目录里的 `WarcraftHelper.ini`，最后几行：
+
+```ini
+# 把鼠标限制在游戏窗口内, 防止鼠标滑到另一个屏幕
+# 仅窗口化/窗口全屏需要此项; 独占全屏时游戏本来就会锁住鼠标
+# 切到其他程序, 或游戏弹出对话框时, 会自动解锁
+CursorLock = true
+```
+
+- `CursorLock = true`：开启（默认）
+- `CursorLock = false`：关闭
+
+### 安全设计（为什么不会把鼠标锁死）
+
+补丁只在**同时满足**这些条件时才锁定：
+
+1. 配置里 `CursorLock` 开着；
+2. 游戏窗口存在、可见、没被最小化；
+3. 游戏窗口是**当前前台窗口**（`GetForegroundWindow()` 等于游戏窗口）。
+
+只要 Alt+Tab 切出去、弹出对话框、或者游戏最小化，就会立刻 `ClipCursor(NULL)` 解锁。
+`Stop()`（插件卸载时）也会强制解锁一次，绝不留一个锁死的光标给你。
+
+---
+
+## 三、怎么用（两种方式，选一种）
+
+### 方式 A：直接用现成的编译结果（推荐，不用装编译工具）
+
+1. 把下面 4 个文件复制到魔兽争霸3 的安装目录（和 `Warcraft III.exe` 同一个文件夹）：
+
+   - `d3d9.dll`
+   - `WarcraftHelper.dll`
+   - `WarcraftHelper.ini`
+   - `WarcraftHelperLoader.mix`
+
+2. 提示覆盖时选「替换」。
+3. 启动游戏。用**窗口化**或**窗口全屏**模式进游戏。
+4. 鼠标就锁在窗口里了。想关掉就把 ini 里的 `CursorLock` 改成 `false`。
+
+> 注意：`WarcraftHelper.ini` 会覆盖你原来的设置。如果你之前改过其他选项，
+> 先备份旧文件，装完再把自己的设置填回去。
+
+### 方式 B：自己编译（想改代码就用这个）
+
+需要 **Visual Studio 2022**（安装时勾上「使用 C++ 的桌面开发」）。
+
+源码已经准备好，双击根目录的 **`build.bat`** 即可，脚本会自动：
+
+1. 找 cmake（找不到就用 VS 自带的）；
+2. 生成 win32 工程；
+3. 用 MinSizeRel 配置编译；
+4. 把需要的 4 个文件收进 **`ready`** 文件夹。
+
+编译完把 `ready` 文件夹里的 4 个文件复制到魔兽目录就行。
+
+命令行等价写法（和上游 README 一致）：
+
+```shell
+cmake . -A win32 -B build
+cmake --build build --config MinSizeRel
+```
+
+编译产物在 `build/output/MinSizeRel/` 下（不是上游 README 写的 `build/output/`，
+VS 多配置生成器会多一层配置名文件夹）。
+
+> `build` 目录里的 `.exp` `.lib` `.pdb` 是编译中间产物，不用管，只需要上面那 4 个文件。
+
+---
+
+## 四、相比上游改了什么
+
+改动很小，就是新增一个插件 + 注册进配置系统：
+
+| 文件 | 改动 |
+| --- | --- |
+| `WarcraftHelper/plugin/cursorlock.cpp` | **新增**，光标锁定实现 |
+| `WarcraftHelper/plugin/cursorlock.hpp` | **新增**，插件声明 |
+| `CMakeLists.txt` | 加 `add_compile_options(/utf-8)`（见下方说明） |
+| `WarcraftHelper/config/config.cpp` | 注册 `CursorLock` 配置项 |
+| `WarcraftHelper/config/config.hpp` | 加 `m_cursorLock` 成员 |
+| `WarcraftHelper/helper.cpp` | 启动时挂上 CursorLock 插件 |
+| `WarcraftHelper.ini` | 加 `CursorLock = true` |
+| `WarcraftHelper/plugin/unlockfps.cpp` | 补上 UTF-8 BOM |
+
+### 关于 `/utf-8` 和 BOM
+
+上游源码里带中文注释的文件**本来就有 UTF-8 BOM**，MSVC 能正确识别编码。
+但 `unlockfps.cpp` 没有 BOM，在中文 Windows（CP936）下，注释末尾的 UTF-8 字节
+可能和换行符凑成非法多字节序列，导致**下一行代码被吞掉**，编译报错。
+
+所以补了两件事，双保险：
+
+1. `CMakeLists.txt` 里给 MSVC 加 `/utf-8`；
+2. 给 `unlockfps.cpp` 补上 BOM，和仓库里其他源文件保持一致。
+
+这样在中文 Windows 上也能一次编译通过。
+
+---
+
+## 五、更新日志
+
+### 2026-09（本补丁）
+
+- **新增** 光标锁定功能（`CursorLock`），窗口化 / 窗口全屏下鼠标不再跑出游戏窗口
+- **新增** 开源前的配置开关 `CursorLock`（默认开启）
+- **修复** 中文 Windows 下 `unlockfps.cpp` 因缺少 BOM 导致的编译错误
+- **新增** 一键编译脚本 `build.bat`，自动收集编译产物到 `ready` 文件夹
+- **新增** 中文说明文档（本文件）
+
+---
+
+## 六、出处与致谢
+
+### 原始项目
+
+- **项目地址**：<https://github.com/LoveBeforT/WarcraftHelper>
+- **原作者**：**[LoveBeforT](https://github.com/LoveBeforT)**
+- **发布版本**：v1.18（2026-01-24）
+- **许可证**：GPL-3.0
+
+**感谢 LoveBeforT 开发并开源了 WarcraftHelper。** 这个项目解决了魔兽争霸3
+在新时代 Windows 上的大量兼容性问题（解锁地图大小、宽屏、解锁 FPS、自动录像等），
+没有它这个光标锁定补丁也没有立足之地。本补丁只是站在这个项目基础上的一个小扩展。
+
+也感谢上游 `readme.md` 里提到的参考项目：
+
+- [YDWE](https://github.com/actboy168/YDWE)
+- [RenderEdge](https://github.com/ENAleksey/RenderEdge_Widescreen)
+
+### 本补丁
+
+由 **Djjywj** 在此基础上修改，改动内容见上方「相比上游改了什么」。
+
+### 相关话题
+
+网上关于「魔兽争霸3 鼠标跑出窗口」的讨论，可参考上游 Issues。
+本项目 fork 自 [LoveBeforT/WarcraftHelper](https://github.com/LoveBeforT/WarcraftHelper)，
+上游 `master` 保持原样，本补丁放在单独分支上，方便随时合并作者的新版本。
+
+---
+
+## 七、许可证
+
+本项目沿用上游的 **GPL-3.0** 许可证，详见 [LICENSE](./LICENSE)。
+
+本补丁属于衍生作品，同样以 GPL-3.0 发布。

@@ -16,6 +16,7 @@
 #include "plugin/u9helper.hpp"
 #include "plugin/replayview.hpp"
 #include "plugin/fpslimiter.hpp"
+#include "plugin/cursorlock.hpp"
 
 #include <atlstr.h>
 
@@ -36,6 +37,7 @@ Helper::Helper() {
 	m_plugins.push_back(reinterpret_cast<IPlugin*>(new U9Helper()));
 	m_plugins.push_back(reinterpret_cast<IPlugin*>(new ReplayView()));
 	m_plugins.push_back(reinterpret_cast<IPlugin*>(new FpsLimiter()));
+	m_plugins.push_back(reinterpret_cast<IPlugin*>(new CursorLock()));
 }
 
 Helper::~Helper() {}

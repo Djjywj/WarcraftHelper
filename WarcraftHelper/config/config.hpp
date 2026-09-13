@@ -14,6 +14,7 @@ public:
     bool m_showHpBar = false;
     bool m_autoRep = false;
     bool m_fpsLimit = false;
+    bool m_cursorLock = false;
     double m_targetFps = 0.0f;
 };
 

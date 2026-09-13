@@ -1,0 +1,214 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1ac45cd..95cb445 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -10,6 +10,15 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
+     message(FATAL_ERROR "Only win32 is supported, maybe you've forgot to specify a platform")
+ endif()
+ 
++if(MSVC)
++    # Sources are UTF-8 without a BOM; without this flag MSVC reads them using
++    # the system ANSI codepage (CP936 on Chinese Windows), where a comment's
++    # last UTF-8 byte can pair with the newline and swallow the next line.
++    # Must come before add_subdirectory, add_compile_options only affects
++    # targets created after it.
++    add_compile_options(/utf-8)
++endif()
++
+ add_subdirectory(WarcraftHelper)
+ add_subdirectory(WHLoader)
+ add_subdirectory(d3d9)
+diff --git a/WarcraftHelper.ini b/WarcraftHelper.ini
+index a9640bc..24ed9a2 100644
+--- a/WarcraftHelper.ini
++++ b/WarcraftHelper.ini
+@@ -1,4 +1,4 @@
+-[Options]
++﻿[Options]
+ 
+ # 是否解锁FPS限制
+ UnlockFPS = true
+@@ -25,4 +25,9 @@ AutoSaveReplay = true
+ FpsLimit = true
+ 
+ # FPS最大锁帧
+-TargetFps = 300
+\ No newline at end of file
++TargetFps = 300
++
++# 把鼠标限制在游戏窗口内, 防止鼠标滑到另一个屏幕
++# 仅窗口化/窗口全屏需要此项; 独占全屏时游戏本来就会锁住鼠标
++# 切到其他程序, 或游戏弹出对话框时, 会自动解锁
++CursorLock = true
+diff --git a/WarcraftHelper/config/config.cpp b/WarcraftHelper/config/config.cpp
+index a8655e0..cec7af3 100644
+--- a/WarcraftHelper/config/config.cpp
++++ b/WarcraftHelper/config/config.cpp
+@@ -18,6 +18,7 @@ Config::Config() {
+     m_autoRep = ini.GetBoolValue("Options", "AutoSaveReplay", false);
+     m_fullScreen = ini.GetBoolValue("Options", "AutoFullScreen", false);
+     m_fpsLimit = ini.GetBoolValue("Options", "FpsLimit", false);
++    m_cursorLock = ini.GetBoolValue("Options", "CursorLock", false);
+     m_targetFps = ini.GetDoubleValue("Options", "TargetFps", 60.0);
+ }
+ 
+diff --git a/WarcraftHelper/config/config.hpp b/WarcraftHelper/config/config.hpp
+index e87f73f..89af77a 100644
+--- a/WarcraftHelper/config/config.hpp
++++ b/WarcraftHelper/config/config.hpp
+@@ -14,6 +14,7 @@ public:
+     bool m_showHpBar = false;
+     bool m_autoRep = false;
+     bool m_fpsLimit = false;
++    bool m_cursorLock = false;
+     double m_targetFps = 0.0f;
+ };
+ 
+diff --git a/WarcraftHelper/helper.cpp b/WarcraftHelper/helper.cpp
+index 0f0d354..f40513a 100644
+--- a/WarcraftHelper/helper.cpp
++++ b/WarcraftHelper/helper.cpp
+@@ -16,6 +16,7 @@
+ #include "plugin/u9helper.hpp"
+ #include "plugin/replayview.hpp"
+ #include "plugin/fpslimiter.hpp"
++#include "plugin/cursorlock.hpp"
+ 
+ #include <atlstr.h>
+ 
+@@ -36,6 +37,7 @@ Helper::Helper() {
+ 	m_plugins.push_back(reinterpret_cast<IPlugin*>(new U9Helper()));
+ 	m_plugins.push_back(reinterpret_cast<IPlugin*>(new ReplayView()));
+ 	m_plugins.push_back(reinterpret_cast<IPlugin*>(new FpsLimiter()));
++	m_plugins.push_back(reinterpret_cast<IPlugin*>(new CursorLock()));
+ }
+ 
+ Helper::~Helper() {}
+diff --git a/WarcraftHelper/plugin/cursorlock.cpp b/WarcraftHelper/plugin/cursorlock.cpp
+new file mode 100644
+index 0000000..cc64c8e
+--- /dev/null
++++ b/WarcraftHelper/plugin/cursorlock.cpp
+@@ -0,0 +1,94 @@
++// NOTE: this file is intentionally ASCII-only.
++// MSVC compiles sources without a UTF-8 BOM using the system ANSI codepage,
++// so non-ASCII comments can swallow the next line on Chinese Windows.
++#include "cursorlock.hpp"
++#include "config/config.hpp"
++
++// Only release a clip region this plugin installed, so we never clobber
++// a lock owned by the game or the OS. Both flags are written only by the
++// worker thread and read by Stop(), which runs after the thread is done.
++static bool c_locked = false;
++static bool c_closed = false;
++
++static bool IsOurProcessWindow(HWND wnd) {
++    DWORD pid = 0;
++    GetWindowThreadProcessId(wnd, &pid);
++    return pid == GetCurrentProcessId();
++}
++
++// Prefer the window cached by the framework; fall back to the foreground
++// window of this process when it goes stale. Game::GetGameWindow only
++// resolves once, so it stays dead after the game recreates its window.
++static HWND ResolveGameWindow() {
++    HWND game = GetGameInstance()->GetGameWindow();
++    if (game != NULL && IsWindow(game)) {
++        return game;
++    }
++
++    HWND foreground = GetForegroundWindow();
++    if (foreground != NULL && IsWindow(foreground) && IsOurProcessWindow(foreground)) {
++        return foreground;
++    }
++    return NULL;
++}
++
++// Clip the cursor to the client area, which excludes title bar and borders.
++static bool ClipToGameWindow(HWND game) {
++    RECT client;
++    POINT origin = {0, 0};
++    RECT clip;
++
++    if (!GetClientRect(game, &client) || !ClientToScreen(game, &origin)) {
++        return false;
++    }
++
++    clip.left = origin.x;
++    clip.top = origin.y;
++    clip.right = origin.x + client.right;
++    clip.bottom = origin.y + client.bottom;
++
++    if (clip.right <= clip.left || clip.bottom <= clip.top) {
++        return false;
++    }
++
++    return ClipCursor(&clip) != 0;
++}
++
++DWORD __stdcall CursorLockThread(LPVOID lpThreadParameter) {
++    while (1) {
++        if (c_closed) {
++            ExitThread(0);
++        }
++
++        HWND game = ResolveGameWindow();
++        // Never lock while a dialog is up or another app is focused,
++        // otherwise the cursor gets trapped inside a background window.
++        bool should_lock = GetConfig()->m_cursorLock
++                && game != NULL
++                && IsWindowVisible(game)
++                && !IsIconic(game)
++                && GetForegroundWindow() == game
++                && ClipToGameWindow(game);
++
++        if (!should_lock && c_locked) {
++            ClipCursor(NULL);
++        }
++        c_locked = should_lock;
++
++        Sleep(50);
++    }
++    return 0;
++}
++
++void CursorLock::Start() {
++    // The thread always runs; the config flag decides whether it locks,
++    // so the feature can be toggled while the game is running.
++    this->thread = CreateThread(NULL, NULL, CursorLockThread, NULL, NULL, NULL);
++}
++
++void CursorLock::Stop() {
++    c_closed = true;
++    ClipCursor(NULL);
++    c_locked = false;
++    TerminateThread(this->thread, 0);
++}
+diff --git a/WarcraftHelper/plugin/cursorlock.hpp b/WarcraftHelper/plugin/cursorlock.hpp
+new file mode 100644
+index 0000000..d1afa5c
+--- /dev/null
++++ b/WarcraftHelper/plugin/cursorlock.hpp
+@@ -0,0 +1,12 @@
++#pragma once
++
++#include "plugin.hpp"
++
++class CursorLock : IPlugin {
++public:
++	CursorLock() = default;
++	virtual void Start();
++	virtual void Stop();
++private:
++	HANDLE thread = 0;
++};
+diff --git a/WarcraftHelper/plugin/unlockfps.cpp b/WarcraftHelper/plugin/unlockfps.cpp
+index 2245735..9d6b793 100644
+--- a/WarcraftHelper/plugin/unlockfps.cpp
++++ b/WarcraftHelper/plugin/unlockfps.cpp
+@@ -1,4 +1,4 @@
+-#include "unlockfps.hpp"
++﻿#include "unlockfps.hpp"
+ #include "config/config.hpp"
+ #include "fpslimiter.hpp"
+ #include <iostream>
