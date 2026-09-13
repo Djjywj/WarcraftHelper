@@ -175,3 +175,22 @@ VS 多配置生成器会多一层配置名文件夹）。
 本项目沿用上游的 **GPL-3.0** 许可证，详见 [LICENSE](./LICENSE)。
 
 本补丁属于衍生作品，同样以 GPL-3.0 发布。
+
+---
+
+## 八、以后怎么跟进原作者的新版本
+
+上游更新后（比如作者发了 v1.19），照下面做：
+
+1. 打开 <https://github.com/Djjywj/WarcraftHelper>；
+2. 确认左上角分支是 **`cursorlock`**；
+3. 点分支旁边的 **「Sync fork」→「Update branch」**；
+4. 如果提示有冲突（多半是 `unlockfps.cpp` 那一行 BOM），按页面提示处理，
+   或者直接告诉我，我来合。
+
+`master` 分支保持和上游一模一样，没做任何改动，专门当"干净镜子"用。
+自己的改动全部在 `cursorlock` 分支上，两边互不干扰。
+
+## 九、反馈
+
+有问题在 <https://github.com/Djjywj/WarcraftHelper/issues> 提。
