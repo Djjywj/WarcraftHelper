@@ -81,21 +81,21 @@ AutoRefreshInterval = 15
 
 ---
 
-## 三、怎么用（两种方式，选一种）
+## 三、怎么用
 
 ### 方式 A：直接用现成的编译结果（推荐，不用装编译工具）
 
-1. 把下面 4 个文件复制到魔兽争霸3 的安装目录（和 `Warcraft III.exe` 同一个文件夹）：
+到 [最新版本下载页](https://github.com/Djjywj/WarcraftHelper/releases/latest)
+下 `WarcraftHelper-win32.zip`，解压得到 4 个文件：`d3d9.dll`、`WarcraftHelper.dll`、
+`WarcraftHelper.ini`、`WarcraftHelperLoader.mix`。
 
-   - `d3d9.dll`
-   - `WarcraftHelper.dll`
-   - `WarcraftHelper.ini`
-   - `WarcraftHelperLoader.mix`
+然后：
 
-2. 提示覆盖时选「替换」。
-3. 启动游戏。用**窗口化**或**窗口全屏**模式进游戏。
-4. 鼠标就锁在窗口里了；文字叠字也不用管了，游戏自己每 15 秒刷一次。
-5. 想关掉：把 ini 里的 `CursorLock` 改成 `false` 关光标锁定；
+1. 把这 4 个文件复制到魔兽争霸3 的安装目录（和 `Warcraft III.exe` 同一个文件夹），
+   提示覆盖时选「替换」。
+2. 启动游戏。用**窗口化**或**窗口全屏**模式进游戏。
+3. 鼠标就锁在窗口里了；文字叠字也不用管了，游戏自己每 15 秒刷一次。
+4. 想单独关掉某一项：把 ini 里的 `CursorLock` 改成 `false` 关光标锁定；
    把 `AutoRefreshInterval` 改成 `0` 关自动刷新。
 
 > 注意：`WarcraftHelper.ini` 会覆盖你原来的设置。如果你之前改过其他选项，
