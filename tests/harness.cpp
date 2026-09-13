@@ -1,4 +1,4 @@
-// Offline harness: compiles the real autowindowrefresh.cpp against a stub
+﻿// Offline harness: compiles the real autowindowrefresh.cpp against a stub
 // Win32 layer and asserts the refresh state machine (timing, focus gating,
 // move/move-back, config changes).
 #include "stub_win.h"
